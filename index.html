@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Трансляция Экрана</title>
+    <title>Стример</title>
     <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
     <style>
         body { display: flex; justify-content: center; align-items: center; height: 100vh; background: #11111b; font-family: sans-serif; margin: 0; }
@@ -17,33 +17,47 @@
     <div id="status">Подключение к сети...</div>
 
     <script>
-        const peer = new Peer('lion-ultimate-stream-2026');
+        // Генерируем уникальный ID для этой сессии, чтобы сервера не путались
+        const STREAM_ID = 'lion-turbo-stream-' + Math.random().toString(36).substr(2, 9);
+        
+        // Добавляем TURN серверы для гарантированного обхода блокировок NAT
+        const peer = new Peer(STREAM_ID, {
+            config: {
+                iceServers: [
+                    { urls: 'stun:stun.l.google.com:19302' },
+                    { urls: 'stun:stun1.l.google.com:19302' },
+                    // Бесплатный публичный TURN сервер для ретрансляции трафика
+                    { 
+                        urls: 'turn:openrelay.metered.ca:443', 
+                        username: 'openrelayproject', 
+                        credential: 'openrelayproject' 
+                    }
+                ]
+            }
+        });
+
         const startBtn = document.getElementById('startBtn');
         const statusDiv = document.getElementById('status');
 
-        peer.on('open', function() { 
-            statusDiv.innerText = "Система готова. Нажмите кнопку для старта."; 
-        });
-
-        peer.on('error', function(err) { 
-            statusDiv.innerText = "Ошибка: " + err.type; 
+        peer.on('open', function(id) { 
+            statusDiv.innerHTML = 'Готов! Передайте этот ID зрителю: <b style="color: #fff; font-size: 18px;">' + id + '</b>'; 
         });
 
         startBtn.addEventListener('click', async function() {
             try {
                 const stream = await navigator.mediaDevices.getDisplayMedia({ 
-                    video: true, 
+                    video: { width: 1280, height: 720, frameRate: 20 }, 
                     audio: false 
                 });
-                statusDiv.innerText = "Стрим запущен! Ждем зрителя...";
+                statusDiv.innerText = "Трансляция активна! Ждем подключения зрителя...";
                 startBtn.style.display = 'none';
 
                 peer.on('call', function(call) {
                     call.answer(stream);
-                    statusDiv.innerText = "Идет трансляция экрана.";
+                    statusDiv.innerText = "Зритель подключился! Картинка уходит.";
                 });
             } catch (err) {
-                alert("Ошибка захвата: " + err.message);
+                alert("Ошибка: " + err.message);
             }
         });
     </script>
