@@ -3,52 +3,24 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Просмотр Трансляции</title>
+    <title>Просмотр</title>
     <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
     <style>
-        body {
-            margin: 0;
-            background-color: #000;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            height: 100vh;
-            overflow: hidden;
-            font-family: sans-serif;
-            color: white;
-        }
-        video {
-            width: 100%;
-            height: 100%;
-            object-fit: contain;
-        }
-        #info {
-            position: absolute;
-            color: white;
-            background: rgba(0,0,0,0.7);
-            padding: 12px 25px;
-            border-radius: 8px;
-            pointer-events: none;
-            font-size: 16px;
-            text-align: center;
-        }
+        body { margin: 0; background: #000; height: 100vh; display: flex; justify-content: center; align-items: center; color: white; font-family: sans-serif; }
+        video { width: 100%; height: 100%; object-fit: contain; }
+        #info { position: absolute; background: rgba(0,0,0,0.7); padding: 10px 20px; border-radius: 5px; }
     </style>
 </head>
 <body>
 
-    <div id="info">Подключение к сигнальному серверу...</div>
+    <div id="info">Подключение...</div>
     <video id="remoteVideo" autoplay playsinline controls muted></video>
 
     <script>
-        const ROOM_ID = 'lion-ultimate-stream-2026';
-        
-        // Зрителю создаем случайный ID, но передаем те же серверы Google для пробития NAT
         const peer = new Peer({
             config: {
-                'iceServers': [
-                    { urls: 'stun:stun.l.google.com:19302' },
-                    { urls: 'stun:stun1.l.google.com:19302' },
-                    { urls: 'stun:stun2.l.google.com:19302' }
+                iceServers: [
+                    { urls: 'stun:stun.l.google.com:19302' }
                 ]
             }
         });
@@ -57,36 +29,24 @@
         const infoDiv = document.getElementById('info');
 
         peer.on('open', () => {
-            infoDiv.innerText = "Соединение установлено. Вызываем чешского клиента...";
+            infoDiv.innerText = "Соединение установлено. Поиск стрима...";
+            const call = peer.call('lion-ultimate-stream-2026', new MediaStream());
             
-            // Звоним стримеру по точно такому же ID
-            const call = peer.call(ROOM_ID, new MediaStream());
-            
-            // Ловим поток экрана, когда стример ответит
-            call.on('stream', (remoteStream) => {
+            call.on('stream', (stream) => {
                 infoDiv.style.display = 'none';
-                videoElement.srcObject = remoteStream;
-                
-                // Принудительный старт плеера (обход защит браузера от автоплея)
-                videoElement.play().catch(e => {
-                    console.log("Браузер требует клика для старта видео");
+                videoElement.srcObject = stream;
+                videoElement.play().catch(() => {
                     infoDiv.style.display = 'block';
-                    infoDiv.innerText = "Кликните мышкой по экрану, чтобы пошло видео";
+                    infoDiv.innerText = "Кликните по экрану для запуска видео";
                 });
             });
         });
 
-        // Если видео загрузилось, но заблокировано политикой браузера — клик по экрану его запустит
         document.body.addEventListener('click', () => {
             if (videoElement.srcObject) {
                 videoElement.play();
                 infoDiv.style.display = 'none';
             }
-        });
-
-        peer.on('error', (err) => {
-            console.error(err);
-            infoDiv.innerText = "Трансляция не найдена. Убедитесь, что клиент в Чехии уже нажал кнопку.";
         });
     </script>
 </body>
