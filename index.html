@@ -1,65 +1,271 @@
 <!DOCTYPE html>
 <html lang="ru">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Стример</title>
-    <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
-    <style>
-        body { display: flex; justify-content: center; align-items: center; height: 100vh; background: #11111b; font-family: sans-serif; margin: 0; }
-        #startBtn { padding: 20px 40px; font-size: 22px; color: #fff; background: linear-gradient(45deg, #ff416c, #ff4b2b); border: none; border-radius: 50px; cursor: pointer; font-weight: bold; }
-        #status { position: absolute; bottom: 20px; color: #888; }
-    </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Screen Share</title>
+
+<style>
+body{
+background:#0f172a;
+color:white;
+font-family:sans-serif;
+text-align:center;
+padding:20px;
+}
+
+button{
+padding:12px 20px;
+margin:5px;
+font-size:16px;
+cursor:pointer;
+}
+
+input{
+padding:10px;
+font-size:16px;
+width:250px;
+}
+
+video{
+width:100%;
+max-width:1200px;
+margin-top:20px;
+background:black;
+}
+</style>
 </head>
 <body>
 
-    <button id="startBtn">Включить демонстрацию</button>
-    <div id="status">Подключение к сети...</div>
+<h1>Screen Share</h1>
 
-    <script>
-        // Генерируем уникальный ID для этой сессии, чтобы сервера не путались
-        const STREAM_ID = 'lion-turbo-stream-' + Math.random().toString(36).substr(2, 9);
-        
-        // Добавляем TURN серверы для гарантированного обхода блокировок NAT
-        const peer = new Peer(STREAM_ID, {
-            config: {
-                iceServers: [
-                    { urls: 'stun:stun.l.google.com:19302' },
-                    { urls: 'stun:stun1.l.google.com:19302' },
-                    // Бесплатный публичный TURN сервер для ретрансляции трафика
-                    { 
-                        urls: 'turn:openrelay.metered.ca:443', 
-                        username: 'openrelayproject', 
-                        credential: 'openrelayproject' 
-                    }
-                ]
-            }
-        });
+<button id="hostBtn">
+Создать комнату
+</button>
 
-        const startBtn = document.getElementById('startBtn');
-        const statusDiv = document.getElementById('status');
+<br><br>
 
-        peer.on('open', function(id) { 
-            statusDiv.innerHTML = 'Готов! Передайте этот ID зрителю: <b style="color: #fff; font-size: 18px;">' + id + '</b>'; 
-        });
+<input id="roomInput" placeholder="Код комнаты">
 
-        startBtn.addEventListener('click', async function() {
-            try {
-                const stream = await navigator.mediaDevices.getDisplayMedia({ 
-                    video: { width: 1280, height: 720, frameRate: 20 }, 
-                    audio: false 
-                });
-                statusDiv.innerText = "Трансляция активна! Ждем подключения зрителя...";
-                startBtn.style.display = 'none';
+<button id="joinBtn">
+Подключиться
+</button>
 
-                peer.on('call', function(call) {
-                    call.answer(stream);
-                    statusDiv.innerText = "Зритель подключился! Картинка уходит.";
-                });
-            } catch (err) {
-                alert("Ошибка: " + err.message);
-            }
-        });
-    </script>
+<h2 id="roomCode"></h2>
+
+<video id="video" autoplay playsinline controls></video>
+
+<script type="module">
+
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+
+import {
+getDatabase,
+ref,
+set,
+push,
+onValue,
+get
+}
+from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
+
+const firebaseConfig = {
+apiKey: "AIzaSyATuLv77C1q3awiN2fDeckQtCerF-rTc_Q",
+authDomain: "lionspdf-499b5.firebaseapp.com",
+databaseURL: "https://lionspdf-499b5-default-rtdb.firebaseio.com",
+projectId: "lionspdf-499b5",
+storageBucket: "lionspdf-499b5.firebasestorage.app",
+messagingSenderId: "63522826506",
+appId: "1:63522826506:web:45ec1d9412f0aec5a6f2f3"
+};
+
+const app = initializeApp(firebaseConfig);
+const db = getDatabase(app);
+
+const video = document.getElementById("video");
+
+const hostBtn = document.getElementById("hostBtn");
+const joinBtn = document.getElementById("joinBtn");
+
+const roomInput = document.getElementById("roomInput");
+const roomCode = document.getElementById("roomCode");
+
+const iceServers = {
+iceServers:[
+{
+urls:"stun:stun.l.google.com:19302"
+}
+]
+};
+
+hostBtn.onclick = async () => {
+
+const roomId =
+Math.random().toString(36).substring(2,8);
+
+roomCode.innerText =
+"Код комнаты: " + roomId;
+
+const roomRef =
+ref(db,"rooms/"+roomId);
+
+const pc =
+new RTCPeerConnection(iceServers);
+
+const stream =
+await navigator.mediaDevices.getDisplayMedia({
+video:true,
+audio:false
+});
+
+stream.getTracks().forEach(track=>{
+pc.addTrack(track,stream);
+});
+
+pc.onicecandidate = async event => {
+
+if(event.candidate){
+
+push(
+ref(db,
+"rooms/"+roomId+"/hostCandidates"),
+event.candidate.toJSON()
+);
+
+}
+
+};
+
+const offer =
+await pc.createOffer();
+
+await pc.setLocalDescription(offer);
+
+await set(roomRef,{
+offer:{
+type:offer.type,
+sdp:offer.sdp
+}
+});
+
+onValue(
+ref(db,"rooms/"+roomId+"/answer"),
+async snap=>{
+
+const data = snap.val();
+
+if(!data) return;
+
+if(!pc.currentRemoteDescription){
+
+await pc.setRemoteDescription(
+new RTCSessionDescription(data)
+);
+
+}
+
+}
+);
+
+onValue(
+ref(db,"rooms/"+roomId+"/viewerCandidates"),
+snap=>{
+
+snap.forEach(child=>{
+
+pc.addIceCandidate(
+new RTCIceCandidate(child.val())
+);
+
+});
+
+}
+);
+
+};
+
+joinBtn.onclick = async () => {
+
+const roomId =
+roomInput.value.trim();
+
+if(!roomId){
+alert("Введите код");
+return;
+}
+
+const roomRef =
+ref(db,"rooms/"+roomId);
+
+const roomData =
+(await get(roomRef)).val();
+
+if(!roomData){
+alert("Комната не найдена");
+return;
+}
+
+const pc =
+new RTCPeerConnection(iceServers);
+
+pc.ontrack = event => {
+
+video.srcObject =
+event.streams[0];
+
+};
+
+pc.onicecandidate = event => {
+
+if(event.candidate){
+
+push(
+ref(db,
+"rooms/"+roomId+"/viewerCandidates"),
+event.candidate.toJSON()
+);
+
+}
+
+};
+
+await pc.setRemoteDescription(
+new RTCSessionDescription(
+roomData.offer
+)
+);
+
+const answer =
+await pc.createAnswer();
+
+await pc.setLocalDescription(answer);
+
+await set(
+ref(db,"rooms/"+roomId+"/answer"),
+{
+type:answer.type,
+sdp:answer.sdp
+}
+);
+
+onValue(
+ref(db,"rooms/"+roomId+"/hostCandidates"),
+snap=>{
+
+snap.forEach(child=>{
+
+pc.addIceCandidate(
+new RTCIceCandidate(child.val())
+);
+
+});
+
+}
+);
+
+};
+
+</script>
+
 </body>
 </html>
