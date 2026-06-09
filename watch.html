@@ -3,34 +3,61 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Просмотр Трансляции</title>
+    <title>Просмотр</title>
     <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
     <style>
-        body { margin: 0; background: #000; height: 100vh; display: flex; justify-content: center; align-items: center; color: white; font-family: sans-serif; }
+        body { margin: 0; background: #000; height: 100vh; display: flex; flex-direction: column; justify-content: center; align-items: center; color: white; font-family: sans-serif; }
         video { width: 100%; height: 100%; object-fit: contain; }
-        #info { position: absolute; background: rgba(0,0,0,0.7); padding: 10px 20px; border-radius: 5px; }
+        #connectBox { position: absolute; background: rgba(20, 20, 30, 0.9); padding: 20px; border-radius: 10px; border: 1px solid #333; text-align: center; }
+        input { padding: 10px; width: 200px; border-radius: 5px; border: 1px solid #555; background: #222; color: #fff; font-size: 16px; margin-bottom: 10px; text-align: center; }
+        button { padding: 10px 20px; background: #ff4b2b; color: white; border: none; border-radius: 5px; cursor: pointer; font-weight: bold; }
     </style>
 </head>
 <body>
 
-    <div id="info">Подключение к серверу...</div>
+    <div id="connectBox">
+        <h3>Подключение к трансляции</h3>
+        <input type="text" id="streamIdInput" placeholder="Введи ID стримера сюда"><br>
+        <button id="connectBtn">Смотреть экран</button>
+    </div>
+
     <video id="remoteVideo" autoplay playsinline controls muted></video>
 
     <script>
-        const peer = new Peer();
-        const videoElement = document.getElementById('remoteVideo');
-        const infoDiv = document.getElementById('info');
+        const peer = new Peer({
+            config: {
+                iceServers: [
+                    { urls: 'stun:stun.l.google.com:19302' },
+                    { urls: 'stun:stun1.l.google.com:19302' },
+                    { 
+                        urls: 'turn:openrelay.metered.ca:443', 
+                        username: 'openrelayproject', 
+                        credential: 'openrelayproject' 
+                    }
+                ]
+            }
+        });
 
-        peer.on('open', function() {
-            infoDiv.innerText = "Подключено. Ожидаем поток от стримера...";
-            const call = peer.call('lion-ultimate-stream-2026', new MediaStream());
+        const videoElement = document.getElementById('remoteVideo');
+        const connectBox = document.getElementById('connectBox');
+        const connectBtn = document.getElementById('connectBtn');
+        const streamIdInput = document.getElementById('streamIdInput');
+
+        connectBtn.addEventListener('click', function() {
+            const targetId = streamIdInput.value.trim();
+            if (!targetId) return alert("Сначала введи ID!");
+
+            connectBox.innerHTML = "<h3>Устанавливаем защищенное соединение...</h3>";
+            
+            // Звоним по уникальному ID через TURN-реле
+            const call = peer.call(targetId, new MediaStream());
             
             call.on('stream', function(stream) {
-                infoDiv.style.display = 'none';
+                connectBox.style.display = 'none';
                 videoElement.srcObject = stream;
                 videoElement.play().catch(function() {
-                    infoDiv.style.display = 'block';
-                    infoDiv.innerText = "Кликните по экрану, чтобы включить трансляцию";
+                    connectBox.style.display = 'block';
+                    connectBox.innerHTML = "<h3>Кликните по экрану для старта видео</h3>";
                 });
             });
         });
@@ -38,7 +65,7 @@
         document.body.addEventListener('click', function() {
             if (videoElement.srcObject) {
                 videoElement.play();
-                infoDiv.style.display = 'none';
+                connectBox.style.display = 'none';
             }
         });
     </script>
