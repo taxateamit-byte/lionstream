@@ -6,7 +6,7 @@
     <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
     <style>
         body { display: flex; justify-content: center; align-items: center; height: 100vh; background: #11111b; font-family: sans-serif; margin: 0; }
-        #startBtn { padding: 20px 40px; font-size: 22px; color: #fff; background: #ff4b2b; border: none; border-radius: 50px; cursor: pointer; font-weight: bold; }
+        #startBtn { padding: 20px 40px; font-size: 22px; color: #fff; background: #ff4b2b; border: none; border-radius: 50px; cursor: pointer; font-weight: bold; box-shadow: 0 4px 15px rgba(255, 75, 43, 0.4); }
         #status { position: absolute; bottom: 20px; color: #888; }
     </style>
 </head>
@@ -16,8 +16,10 @@
     <div id="status">Подключение к сети...</div>
 
     <script>
-        // Жестко зашиваем ID, чтобы ты знал, куда подключаться
-        const peer = new Peer('lion-share-screen-id');
+        // Единый ID для этой трансляции
+        const ROOM_ID = 'lion-ultimate-stream-2026';
+        
+        const peer = new Peer(ROOM_ID);
         const startBtn = document.getElementById('startBtn');
         const statusDiv = document.getElementById('status');
 
@@ -26,7 +28,7 @@
         startBtn.addEventListener('click', async () => {
             try {
                 const stream = await navigator.mediaDevices.getDisplayMedia({ video: true, audio: false });
-                statusDiv.innerText = "Стрим запущен. Ожидаем вас...";
+                statusDiv.innerText = "Стрим запущен. Ожидаем зрителя...";
                 startBtn.style.display = 'none';
 
                 peer.on('call', (call) => {
@@ -34,7 +36,7 @@
                     statusDiv.innerText = "Вы транслируете экран!";
                 });
             } catch (err) {
-                alert("Ошибка: " + err.message);
+                alert("Ошибка захвата: " + err.message);
             }
         });
     </script>
