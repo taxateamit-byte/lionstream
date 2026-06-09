@@ -6,54 +6,22 @@
     <title>Трансляция Экрана</title>
     <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
     <style>
-        body {
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            height: 100vh;
-            background: radial-gradient(circle, #1e1e2f, #11111b);
-            font-family: sans-serif;
-            margin: 0;
-        }
-        #startBtn {
-            padding: 20px 40px;
-            font-size: 22px;
-            font-weight: bold;
-            color: #fff;
-            background: linear-gradient(45deg, #ff416c, #ff4b2b);
-            border: none;
-            border-radius: 50px;
-            cursor: pointer;
-            box-shadow: 0 4px 15px rgba(255, 75, 43, 0.4);
-            transition: transform 0.2s, box-shadow 0.2s;
-        }
-        #startBtn:hover {
-            transform: scale(1.05);
-            box-shadow: 0 6px 20px rgba(255, 75, 43, 0.6);
-        }
-        #status {
-            position: absolute;
-            bottom: 20px;
-            color: #888;
-        }
+        body { display: flex; justify-content: center; align-items: center; height: 100vh; background: #11111b; font-family: sans-serif; margin: 0; }
+        #startBtn { padding: 20px 40px; font-size: 22px; color: #fff; background: linear-gradient(45deg, #ff416c, #ff4b2b); border: none; border-radius: 50px; cursor: pointer; font-weight: bold; }
+        #status { position: absolute; bottom: 20px; color: #888; }
     </style>
 </head>
 <body>
 
     <button id="startBtn">Включить демонстрацию</button>
-    <div id="status">Подключение к сети...</div>
+    <div id="status">Подключение...</div>
 
     <script>
-        // Единый ID комнаты трансляции для связи Чехия -> Нидерланды
-        const ROOM_ID = 'lion-ultimate-stream-2026';
-        
-        // Подключаемся к сети PeerJS с обходом жестких файрволов через сервера Google
-        const peer = new Peer(ROOM_ID, {
+        // Чистый конфиг без лишних кавычек для GitHub
+        const peer = new Peer('lion-ultimate-stream-2026', {
             config: {
-                'iceServers': [
-                    { urls: 'stun:stun.l.google.com:19302' },
-                    { urls: 'stun:stun1.l.google.com:19302' },
-                    { urls: 'stun:stun2.l.google.com:19302' }
+                iceServers: [
+                    { urls: 'stun:stun.l.google.com:19302' }
                 ]
             }
         });
@@ -61,47 +29,24 @@
         const startBtn = document.getElementById('startBtn');
         const statusDiv = document.getElementById('status');
 
-        peer.on('open', () => { 
-            statusDiv.innerText = "Система готова. Ожидание нажатия кнопки..."; 
-        });
-
-        peer.on('error', (err) => {
-            console.error(err);
-            statusDiv.innerText = "Ошибка сети: " + err.type;
-        });
+        peer.on('open', () => { statusDiv.innerText = "Система готова. Нажмите кнопку."; });
+        peer.on('error', (err) => { statusDiv.innerText = "Ошибка: " + err.type; });
 
         startBtn.addEventListener('click', async () => {
             try {
-                statusDiv.innerText = "Запрос разрешения на захват экрана...";
-                
-                // Захватываем экран с оптимизацией битрейта для стабильности связи
                 const stream = await navigator.mediaDevices.getDisplayMedia({ 
-                    video: {
-                        width: { ideal: 1280 },
-                        height: { ideal: 720 },
-                        frameRate: { ideal: 15 }
-                    }, 
+                    video: { width: 1280, height: 720, frameRate: 15 }, 
                     audio: false 
                 });
-                
-                statusDiv.innerText = "Трансляция запущена! Ждем, пока зритель откроет watch.html...";
+                statusDiv.innerText = "Стрим в эфире! Ожидайте...";
                 startBtn.style.display = 'none';
 
-                // Ждем звонка от зрителя
                 peer.on('call', (call) => {
-                    call.answer(stream); // Отдаем поток экрана зрителю
-                    statusDiv.innerText = "Зритель подключился, идет показ экрана.";
+                    call.answer(stream);
+                    statusDiv.innerText = "Показ идет!";
                 });
-
-                // Если клиент сам нажал "Остановить показ" в системной панели браузера
-                stream.getVideoTracks()[0].onended = () => {
-                    location.reload();
-                };
-
             } catch (err) {
-                console.error(err);
-                alert("Не удалось захватить экран. Ошибка: " + err.message);
-                statusDiv.innerText = "Ошибка старта: " + err.message;
+                alert("Ошибка: " + err.message);
             }
         });
     </script>
