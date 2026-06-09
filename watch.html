@@ -13,7 +13,7 @@
 </head>
 <body>
 
-    <div id="info">Подключение...</div>
+    <div id="info">Подключение к серверу...</div>
     <video id="remoteVideo" autoplay playsinline controls muted></video>
 
     <script>
@@ -22,7 +22,7 @@
         const infoDiv = document.getElementById('info');
 
         peer.on('open', function() {
-            infoDiv.innerText = "Соединение установлено. Поиск стрима...";
+            infoDiv.innerText = "Подключено. Ожидаем поток от стримера...";
             const call = peer.call('lion-ultimate-stream-2026', new MediaStream());
             
             call.on('stream', function(stream) {
@@ -30,7 +30,7 @@
                 videoElement.srcObject = stream;
                 videoElement.play().catch(function() {
                     infoDiv.style.display = 'block';
-                    infoDiv.innerText = "Кликните по экрану для запуска видео";
+                    infoDiv.innerText = "Кликните по экрану, чтобы включить трансляцию";
                 });
             });
         });
