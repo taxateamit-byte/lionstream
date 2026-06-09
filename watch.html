@@ -17,37 +17,28 @@
     <video id="remoteVideo" autoplay playsinline controls muted></video>
 
     <script>
-        const peerConfiguration = {
-            config: {
-                iceServers: [
-                    { urls: "stun:stun.l.google.com:19302" },
-                    { urls: "stun:stun1.l.google.com:19302" }
-                ]
-            }
-        };
+        const peer = new Peer();
+        const videoElement = document.getElementById('remoteVideo');
+        const infoDiv = document.getElementById('info');
 
-        const peer = new Peer(peerConfiguration);
-        const videoElement = document.getElementById("remoteVideo");
-        const infoDiv = document.getElementById("info");
-
-        peer.on("open", function() {
+        peer.on('open', function() {
             infoDiv.innerText = "Соединение установлено. Поиск стрима...";
-            const call = peer.call("lion-ultimate-stream-2026", new MediaStream());
+            const call = peer.call('lion-ultimate-stream-2026', new MediaStream());
             
-            call.on("stream", function(stream) {
-                infoDiv.style.display = "none";
+            call.on('stream', function(stream) {
+                infoDiv.style.display = 'none';
                 videoElement.srcObject = stream;
                 videoElement.play().catch(function() {
-                    infoDiv.style.display = "block";
+                    infoDiv.style.display = 'block';
                     infoDiv.innerText = "Кликните по экрану для запуска видео";
                 });
             });
         });
 
-        document.body.addEventListener("click", function() {
+        document.body.addEventListener('click', function() {
             if (videoElement.srcObject) {
                 videoElement.play();
-                infoDiv.style.display = "none";
+                infoDiv.style.display = 'none';
             }
         });
     </script>
